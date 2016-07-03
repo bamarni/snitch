@@ -21,19 +21,15 @@ func main() {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("Couldn't start command : %s", err)
+	}
 
-	childPid := make(chan int, 1)
 	childExited := make(chan error, 1)
-
 	go func() {
-		if err := cmd.Start(); err != nil {
-			log.Fatalf("Couldn't start command : %s", err)
-		}
-		childPid <- cmd.Process.Pid
 		childExited <- cmd.Wait()
 	}()
 
-	pid := <-childPid
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig)
 	for {
@@ -44,7 +40,7 @@ func main() {
 				continue
 			}
 
-			syscall.Kill(pid, signal.(syscall.Signal))
+			syscall.Kill(cmd.Process.Pid, signal.(syscall.Signal))
 
 		case err := <-childExited:
 			if err == nil {
